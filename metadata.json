@@ -1,0 +1,6 @@
+{
+  "name": "ทรัพย์วราค้าข้าว",
+  "description": "ระบบจัดการร้านค้าส่งข้าวสารและอาหารแห้ง - POS, บริหารคลังสินค้า, และรายงานยอดขาย",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

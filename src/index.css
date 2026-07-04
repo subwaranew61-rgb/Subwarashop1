@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Sarabun", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Clean Minimalism Color Theme */
+  --color-brand-bg: #F8F9F4;
+  --color-brand-text: #1D211C;
+  --color-brand-green: #2D5A27;
+  --color-brand-green-hover: #1f3f1b;
+  --color-brand-yellow: #E9C46A;
+  --color-brand-brown: #A67C52;
+  --color-brand-light: #F0F2EB;
+  --color-brand-border: #E6E8E1;
+}

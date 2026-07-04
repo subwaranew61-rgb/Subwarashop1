@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/public/manifest.json" />
+    <meta name="theme-color" content="#065f46" />
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/wheat.png" />
+    
+    <!-- Google Fonts for Elegant Thai & English Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <title>ทรัพย์วราค้าข้าว - ระบบจัดการค้าส่งข้าวสารและอาหารแห้ง</title>
+  </head>
+  <body class="bg-stone-50 selection:bg-emerald-100 selection:text-emerald-900">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- PWA SW Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/public/sw.js')
+            .then(reg => console.log('Service worker registered successfully', reg.scope))
+            .catch(err => console.warn('Service worker registration failed', err));
+        });
+      }
+    </script>
+  </body>
+</html>
+

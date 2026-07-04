@@ -1,0 +1,21 @@
+{
+  "short_name": "ทรัพย์วรา",
+  "name": "ทรัพย์วราค้าข้าว - ระบบจัดการค้าส่ง",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/192/wheat.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://img.icons8.com/color/512/wheat.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "background_color": "#065f46",
+  "theme_color": "#065f46",
+  "display": "standalone",
+  "orientation": "portrait"
+}
