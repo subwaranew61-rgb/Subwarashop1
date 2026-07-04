@@ -49,6 +49,19 @@ export default function Products({ currentUser }: ProductsProps) {
   const [prodMinQty, setProdMinQty] = useState(0);
   const [prodIsRice, setProdIsRice] = useState(true);
   const [prodKgPerBag, setProdKgPerBag] = useState(45); // default 45kg per bag
+
+  // Multi-unit multi-tier pricing states
+  const [priceRetailKg, setPriceRetailKg] = useState<number>(0);
+  const [priceWholesaleKg, setPriceWholesaleKg] = useState<number>(0);
+  const [priceShopKg, setPriceShopKg] = useState<number>(0);
+
+  const [priceRetailThang, setPriceRetailThang] = useState<number>(0);
+  const [priceWholesaleThang, setPriceWholesaleThang] = useState<number>(0);
+  const [priceShopThang, setPriceShopThang] = useState<number>(0);
+
+  const [priceRetailBag, setPriceRetailBag] = useState<number>(0);
+  const [priceWholesaleBag, setPriceWholesaleBag] = useState<number>(0);
+  const [priceShopBag, setPriceShopBag] = useState<number>(0);
   
   // Notification states
   const [success, setSuccess] = useState('');
@@ -95,6 +108,17 @@ export default function Products({ currentUser }: ProductsProps) {
     setProdMinQty(45);
     setProdIsRice(true);
     setProdKgPerBag(45);
+
+    // Reset multi-unit multi-tier pricing states
+    setPriceRetailKg(0);
+    setPriceWholesaleKg(0);
+    setPriceShopKg(0);
+    setPriceRetailThang(0);
+    setPriceWholesaleThang(0);
+    setPriceShopThang(0);
+    setPriceRetailBag(0);
+    setPriceWholesaleBag(0);
+    setPriceShopBag(0);
     
     setShowProductModal(true);
   };
@@ -111,6 +135,17 @@ export default function Products({ currentUser }: ProductsProps) {
     setProdMinQty(product.min_qty);
     setProdIsRice(product.is_rice);
     setProdKgPerBag(product.kg_per_bag || 45);
+
+    // Load multi-unit multi-tier pricing states
+    setPriceRetailKg(product.price_retail_kg || 0);
+    setPriceWholesaleKg(product.price_wholesale_kg || 0);
+    setPriceShopKg(product.price_shop_kg || 0);
+    setPriceRetailThang(product.price_retail_thang || 0);
+    setPriceWholesaleThang(product.price_wholesale_thang || 0);
+    setPriceShopThang(product.price_shop_thang || 0);
+    setPriceRetailBag(product.price_retail_bag || 0);
+    setPriceWholesaleBag(product.price_wholesale_bag || 0);
+    setPriceShopBag(product.price_shop_bag || 0);
     
     setShowProductModal(true);
   };
@@ -123,17 +158,33 @@ export default function Products({ currentUser }: ProductsProps) {
       return;
     }
 
+    // For rice, we ensure the main selling_price matches priceShopBag (storefront bag selling price) for backward compatibility
+    const finalSellingPrice = prodIsRice && priceShopBag > 0 ? Number(priceShopBag) : Number(prodSell);
+
     const newProduct: Product = {
       id: prodId.trim(),
       name: prodName.trim(),
       category: prodCategory,
       cost_price: Number(prodCost),
-      selling_price: Number(prodSell),
+      selling_price: finalSellingPrice,
       unit: prodIsRice ? 'กระสอบ' : prodUnit, // Rice standard base unit is Bag
       stock_qty: Number(prodStock),
       min_qty: Number(prodMinQty),
       is_rice: prodIsRice,
-      kg_per_bag: prodIsRice ? Number(prodKgPerBag) : undefined
+      kg_per_bag: prodIsRice ? Number(prodKgPerBag) : undefined,
+
+      // Save multi-unit multi-tier pricing fields
+      price_retail_kg: prodIsRice ? Number(priceRetailKg) : undefined,
+      price_wholesale_kg: prodIsRice ? Number(priceWholesaleKg) : undefined,
+      price_shop_kg: prodIsRice ? Number(priceShopKg) : undefined,
+
+      price_retail_thang: prodIsRice ? Number(priceRetailThang) : undefined,
+      price_wholesale_thang: prodIsRice ? Number(priceWholesaleThang) : undefined,
+      price_shop_thang: prodIsRice ? Number(priceShopThang) : undefined,
+
+      price_retail_bag: prodIsRice ? Number(priceRetailBag) : undefined,
+      price_wholesale_bag: prodIsRice ? Number(priceWholesaleBag) : undefined,
+      price_shop_bag: prodIsRice ? Number(priceShopBag) : undefined,
     };
 
     try {
@@ -300,8 +351,8 @@ export default function Products({ currentUser }: ProductsProps) {
                 <th className="py-3 px-4">รหัส</th>
                 <th className="py-3 px-4">ชื่อสินค้า</th>
                 <th className="py-3 px-4">หมวดหมู่</th>
-                <th className="py-3 px-4 text-right">ราคาทุน</th>
-                <th className="py-3 px-4 text-right">ราคาขาย</th>
+                <th className="py-3 px-4 text-right">ราคาทุนหลัก</th>
+                <th className="py-3 px-4 text-center">ราคาขายตามหน่วย (ปลีก / หน้าร้าน / ส่ง)</th>
                 <th className="py-3 px-4 text-center">หน่วยหลัก</th>
                 <th className="py-3 px-4 text-center">ยอดสต็อกรวม</th>
                 <th className="py-3 px-4 text-center">สัดส่วนกระสอบข้าว</th>
@@ -327,8 +378,44 @@ export default function Products({ currentUser }: ProductsProps) {
                         {p.category}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-semibold text-stone-600">{p.cost_price.toLocaleString()} ฿</td>
-                    <td className="py-3 px-4 text-right font-bold text-stone-900">{p.selling_price.toLocaleString()} ฿</td>
+                    <td className="py-3 px-4 text-right font-semibold text-stone-600">
+                      {p.cost_price.toLocaleString()} ฿
+                      {p.is_rice && <span className="block text-[9px] text-stone-400">/ กระสอบ</span>}
+                    </td>
+                    <td className="py-3 px-4">
+                      {p.is_rice ? (
+                        <div className="space-y-1 bg-stone-50 border border-stone-200 p-2.5 rounded-xl text-[10px] w-64 mx-auto shadow-sm">
+                          <div className="grid grid-cols-4 font-bold border-b border-stone-200 pb-1 text-stone-500 text-[8px] uppercase">
+                            <span>หน่วย</span>
+                            <span className="text-right text-emerald-700">ปลีก</span>
+                            <span className="text-right text-indigo-700">หน้าร้าน</span>
+                            <span className="text-right text-orange-700">ส่ง</span>
+                          </div>
+                          <div className="grid grid-cols-4 text-stone-700 pt-1 leading-normal">
+                            <span className="font-semibold text-stone-600">1 กก. (kg)</span>
+                            <span className="text-right text-emerald-600 font-bold">{p.price_retail_kg ? `${p.price_retail_kg} ฿` : '-'}</span>
+                            <span className="text-right text-indigo-600 font-bold">{p.price_shop_kg ? `${p.price_shop_kg} ฿` : '-'}</span>
+                            <span className="text-right text-orange-600 font-bold">{p.price_wholesale_kg ? `${p.price_wholesale_kg} ฿` : '-'}</span>
+                          </div>
+                          <div className="grid grid-cols-4 text-stone-700 leading-normal">
+                            <span className="font-semibold text-stone-600">1 ถัง (15kg)</span>
+                            <span className="text-right text-emerald-600 font-bold">{p.price_retail_thang ? `${p.price_retail_thang} ฿` : '-'}</span>
+                            <span className="text-right text-indigo-600 font-bold">{p.price_shop_thang ? `${p.price_shop_thang} ฿` : '-'}</span>
+                            <span className="text-right text-orange-600 font-bold">{p.price_wholesale_thang ? `${p.price_wholesale_thang} ฿` : '-'}</span>
+                          </div>
+                          <div className="grid grid-cols-4 text-stone-700 leading-normal">
+                            <span className="font-semibold text-stone-600">กระสอบ</span>
+                            <span className="text-right text-emerald-600 font-bold">{p.price_retail_bag ? `${p.price_retail_bag} ฿` : '-'}</span>
+                            <span className="text-right text-indigo-600 font-bold">{p.price_shop_bag ? `${p.price_shop_bag} ฿` : '-'}</span>
+                            <span className="text-right text-orange-600 font-bold">{p.price_wholesale_bag ? `${p.price_wholesale_bag} ฿` : '-'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center font-bold text-stone-900 text-sm">
+                          {p.selling_price.toLocaleString()} ฿
+                        </div>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-center font-medium text-stone-600">{p.unit}</td>
                     <td className="py-3 px-4 text-center font-bold">
                       <span className={`inline-flex items-center gap-1 font-mono font-black ${isLowStock ? 'text-red-500' : 'text-stone-800'}`}>
@@ -493,7 +580,9 @@ export default function Products({ currentUser }: ProductsProps) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-1">ราคาทุนต่อหน่วยหลัก (฿) *</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-1">
+                    {prodIsRice ? 'ราคาทุนต่อกระสอบ (฿) *' : 'ราคาทุนต่อหน่วยหลัก (฿) *'}
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -505,7 +594,9 @@ export default function Products({ currentUser }: ProductsProps) {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-1">ราคาขายต่อหน่วยหลัก (฿) *</label>
+                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-1">
+                    {prodIsRice ? 'ราคาขายต่อกระสอบ (฿) *' : 'ราคาขายต่อหน่วยหลัก (฿) *'}
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -516,6 +607,134 @@ export default function Products({ currentUser }: ProductsProps) {
                   />
                 </div>
               </div>
+
+              {/* Rice multi-unit multi-tier pricing table */}
+              {prodIsRice && (
+                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-3">
+                  <span className="text-[11px] font-extrabold text-emerald-800 block border-b border-stone-200 pb-1.5 flex items-center gap-1.5">
+                    <Tags className="h-4 w-4 text-emerald-600 shrink-0" /> ตารางราคาขายตามหน่วย (ปลีก / ส่ง / หน้าร้าน)
+                  </span>
+
+                  <div className="space-y-3">
+                    {/* 1. Per KG Row */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black text-stone-700 block">🛍️ ราคาต่อกิโลกรัม (KG)</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาปลีก (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceRetailKg}
+                            onChange={(e) => setPriceRetailKg(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาหน้าร้าน (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceShopKg}
+                            onChange={(e) => setPriceShopKg(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาส่ง (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceWholesaleKg}
+                            onChange={(e) => setPriceWholesaleKg(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Per Thang Row */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black text-stone-700 block">🧺 ราคาต่อถัง (ถังละ 15 กิโล)</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาปลีก (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceRetailThang}
+                            onChange={(e) => setPriceRetailThang(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาหน้าร้าน (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceShopThang}
+                            onChange={(e) => setPriceShopThang(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาส่ง (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceWholesaleThang}
+                            onChange={(e) => setPriceWholesaleThang(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Per Bag Row */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black text-stone-700 block">📦 ราคาต่อกระสอบ ({prodKgPerBag} กิโล)</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาปลีก (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceRetailBag}
+                            onChange={(e) => {
+                              setPriceRetailBag(Math.max(0, Number(e.target.value)));
+                              if (prodSell === 0) setProdSell(Math.max(0, Number(e.target.value)));
+                            }}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาหน้าร้าน (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceShopBag}
+                            onChange={(e) => {
+                              setPriceShopBag(Math.max(0, Number(e.target.value)));
+                              setProdSell(Math.max(0, Number(e.target.value)));
+                            }}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาส่ง (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceWholesaleBag}
+                            onChange={(e) => setPriceWholesaleBag(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

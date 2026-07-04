@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Percent,
   Wheat,
-  Scale
+  Scale,
+  X
 } from 'lucide-react';
 
 interface POSProps {
@@ -45,6 +46,12 @@ export default function POS({ currentUser }: POSProps) {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Rice selection modal state for choosing unit and tier
+  const [showRiceModal, setShowRiceModal] = useState(false);
+  const [selectedRiceProduct, setSelectedRiceProduct] = useState<Product | null>(null);
+  const [selectedRiceUnit, setSelectedRiceUnit] = useState<'กิโล' | 'ถัง' | 'กระสอบ'>('กิโล');
+  const [selectedRiceTier, setSelectedRiceTier] = useState<'retail' | 'shop' | 'wholesale'>('shop');
 
   // PromptPay configuration states with localStorage persistence
   const [promptPayId, setPromptPayId] = useState<string>(() => localStorage.getItem('promptpay_id') || '0812345678');
@@ -94,41 +101,79 @@ export default function POS({ currentUser }: POSProps) {
     return matchesSearch && matchesCategory;
   });
 
+  // Get product price dynamically depending on selected unit and pricing tier
+  const getProductPriceByUnitAndTier = (product: Product, unit: string, tier: string): number => {
+    if (!product.is_rice) return product.selling_price;
+    
+    if (unit === 'กิโล') {
+      if (tier === 'retail') return product.price_retail_kg || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 1.15);
+      if (tier === 'wholesale') return product.price_wholesale_kg || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 0.95);
+      return product.price_shop_kg || Math.round(product.selling_price / (product.kg_per_bag || 45)); // shop / storefront
+    }
+    
+    if (unit === 'ถัง') {
+      if (tier === 'retail') return product.price_retail_thang || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 15 * 1.1);
+      if (tier === 'wholesale') return product.price_wholesale_thang || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 15 * 0.95);
+      return product.price_shop_thang || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 15); // shop / storefront
+    }
+    
+    // กระสอบ
+    if (tier === 'retail') return product.price_retail_bag || Math.round(product.selling_price * 1.05);
+    if (tier === 'wholesale') return product.price_wholesale_bag || Math.round(product.selling_price * 0.95);
+    return product.price_shop_bag || product.selling_price; // shop / storefront
+  };
+
   // Calculate loose rice price and remaining details
   const getRiceDetails = (product: Product) => {
     if (!product.is_rice || !product.kg_per_bag) return null;
     const bags = Math.floor(product.stock_qty / product.kg_per_bag);
     const loose = product.stock_qty % product.kg_per_bag;
+    const thangs = Math.floor(product.stock_qty / 15);
     
-    // Per kg loose rate: Wholesale bag price divided by kg * 1.15 markup (or custom, e.g. 1450/45*1.15 = 37 THB)
-    const pricePerKg = Math.round((product.selling_price / product.kg_per_bag) * 1.15);
+    // Default storefront prices as a guide
+    const pricePerKg = product.price_shop_kg || Math.round((product.selling_price / product.kg_per_bag) * 1.15);
     const costPerKg = Math.round(product.cost_price / product.kg_per_bag);
     
-    return { bags, loose, pricePerKg, costPerKg };
+    return { bags, loose, thangs, pricePerKg, costPerKg };
   };
 
   // Add Item to Cart
-  const addToCart = (product: Product, preferredUnit?: string) => {
+  const addToCart = (product: Product, preferredUnit?: string, preferredTier?: string) => {
     const isRice = product.is_rice;
     const unit = preferredUnit || product.unit; // Default unit (e.g. 'กระสอบ' or 'ขวด')
-    
+    const tier = preferredTier || 'shop'; // Default to shop/storefront
+
     let price = product.selling_price;
     let cost = product.cost_price;
     
-    const riceDetails = getRiceDetails(product);
-    if (isRice && unit === 'กิโล' && riceDetails) {
-      price = riceDetails.pricePerKg;
-      cost = riceDetails.costPerKg;
+    if (isRice) {
+      price = getProductPriceByUnitAndTier(product, unit, tier);
+      const kg_per_bag = product.kg_per_bag || 45;
+      if (unit === 'กิโล') {
+        cost = Math.round(product.cost_price / kg_per_bag);
+      } else if (unit === 'ถัง') {
+        cost = Math.round((product.cost_price / kg_per_bag) * 15);
+      } else {
+        cost = product.cost_price;
+      }
     }
 
     // Check stock limit before adding
     let maxAvailable = product.stock_qty; // in kg for rice, items for others
-    if (isRice && unit === 'กระสอบ') {
-      maxAvailable = Math.floor(product.stock_qty / (product.kg_per_bag || 45));
+    if (isRice) {
+      if (unit === 'กระสอบ') {
+        maxAvailable = Math.floor(product.stock_qty / (product.kg_per_bag || 45));
+      } else if (unit === 'ถัง') {
+        maxAvailable = Math.floor(product.stock_qty / 15);
+      }
     }
 
+    const displayNameOfUnit = isRice 
+      ? `${unit} (${tier === 'retail' ? 'ปลีก' : tier === 'wholesale' ? 'ส่ง' : 'หน้าร้าน'})` 
+      : unit;
+
     const existingCartItemIndex = cart.findIndex(
-      item => item.product_id === product.id && item.unit === unit
+      item => item.product_id === product.id && item.unit === displayNameOfUnit
     );
 
     if (existingCartItemIndex > -1) {
@@ -151,12 +196,12 @@ export default function POS({ currentUser }: POSProps) {
       const newItem: TransactionItem = {
         product_id: product.id,
         product_name: product.name,
-        unit: unit,
+        unit: displayNameOfUnit,
         qty: 1,
         price: price,
         cost: cost,
         total_price: price,
-        total_weight_kg: isRice ? (unit === 'กระสอบ' ? (product.kg_per_bag || 45) : 1) : undefined
+        total_weight_kg: isRice ? (unit === 'กระสอบ' ? (product.kg_per_bag || 45) : unit === 'ถัง' ? 15 : 1) : undefined
       };
       setCart([...cart, newItem]);
     }
@@ -175,8 +220,12 @@ export default function POS({ currentUser }: POSProps) {
     if (!product) return;
 
     let maxAvailable = product.stock_qty;
-    if (product.is_rice && item.unit === 'กระสอบ') {
-      maxAvailable = Math.floor(product.stock_qty / (product.kg_per_bag || 45));
+    if (product.is_rice) {
+      if (item.unit.includes('กระสอบ')) {
+        maxAvailable = Math.floor(product.stock_qty / (product.kg_per_bag || 45));
+      } else if (item.unit.includes('ถัง')) {
+        maxAvailable = Math.floor(product.stock_qty / 15);
+      }
     }
 
     if (newQty > maxAvailable) {
@@ -377,17 +426,23 @@ export default function POS({ currentUser }: POSProps) {
                     {/* Stock quantities summary */}
                     <div className="mt-2 text-[10px]">
                       {product.is_rice && details ? (
-                        <div className="space-y-0.5">
-                          <span className="text-stone-500 block">
-                            กระสอบเต็ม: <span className="font-bold text-brand-text">{details.bags}</span>
-                          </span>
-                          <span className="text-stone-500 block">
-                            กิโลแบ่งขาย: <span className="font-bold text-brand-green">{details.loose} กก.</span>
-                          </span>
+                        <div className="grid grid-cols-3 gap-1 bg-stone-50 p-1.5 rounded-lg border border-stone-200">
+                          <div className="text-center">
+                            <span className="text-stone-400 block text-[8px] font-bold uppercase">กระสอบ</span>
+                            <span className="font-bold text-stone-800">{details.bags}</span>
+                          </div>
+                          <div className="text-center border-x border-stone-200">
+                            <span className="text-stone-400 block text-[8px] font-bold uppercase">ถัง (15kg)</span>
+                            <span className="font-bold text-stone-800">{details.thangs}</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-stone-400 block text-[8px] font-bold uppercase">กิโลย่อย</span>
+                            <span className="font-bold text-emerald-700">{details.loose} กก.</span>
+                          </div>
                         </div>
                       ) : (
                         <span className="text-stone-500 block">
-                          คงเหลือ: <span className={`font-bold ${isLowStock ? 'text-brand-brown' : 'text-brand-text'}`}>
+                          คงเหลือ: <span className={`font-bold ${isOutOfStock ? 'text-brand-brown' : 'text-brand-text'}`}>
                             {product.stock_qty} {product.unit}
                           </span>
                         </span>
@@ -400,20 +455,16 @@ export default function POS({ currentUser }: POSProps) {
                     {product.is_rice && details ? (
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
-                          onClick={() => addToCart(product, 'กระสอบ')}
-                          disabled={details.bags < 1}
-                          className="flex flex-col items-center justify-center py-1 bg-orange-50/50 hover:bg-orange-50 text-brand-brown border border-orange-100 rounded-lg text-[9px] font-bold cursor-pointer transition-colors disabled:opacity-30"
+                          onClick={() => {
+                            setSelectedRiceProduct(product);
+                            setSelectedRiceUnit('กิโล');
+                            setSelectedRiceTier('shop');
+                            setShowRiceModal(true);
+                          }}
+                          className="w-full col-span-2 py-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition-all border border-emerald-200"
                         >
-                          <span>{product.selling_price} ฿</span>
-                          <span className="opacity-75">/ กระสอบ</span>
-                        </button>
-                        <button
-                          onClick={() => addToCart(product, 'กิโล')}
-                          disabled={product.stock_qty < 1}
-                          className="flex flex-col items-center justify-center py-1 bg-brand-light/50 hover:bg-brand-light text-brand-green border border-brand-border rounded-lg text-[9px] font-bold cursor-pointer transition-colors disabled:opacity-30"
-                        >
-                          <span>{details.pricePerKg} ฿</span>
-                          <span className="opacity-75">/ กิโล</span>
+                          <Wheat className="h-3.5 w-3.5" />
+                          <span>เลือกหน่วย & ตารางราคา</span>
                         </button>
                       </div>
                     ) : (
@@ -714,6 +765,137 @@ export default function POS({ currentUser }: POSProps) {
           </button>
         </form>
       </div>
+
+      {/* Rice Option Selection Modal */}
+      {showRiceModal && selectedRiceProduct && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setShowRiceModal(false)}
+              className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-4">
+              <Wheat className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-base font-bold text-stone-900">
+                เลือกหน่วยขายและตารางราคา
+              </h3>
+            </div>
+
+            <div className="mb-4 bg-stone-50 p-3 rounded-xl border border-stone-200">
+              <p className="text-xs font-bold text-stone-800">{selectedRiceProduct.name}</p>
+              <p className="text-[10px] text-stone-500 mt-1">รหัสสินค้า: {selectedRiceProduct.id}</p>
+              <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-stone-200 text-[11px]">
+                <div>
+                  <span className="text-stone-400 block text-[9px]">กระสอบพร้อมขาย</span>
+                  <span className="font-bold text-stone-700">
+                    {Math.floor(selectedRiceProduct.stock_qty / (selectedRiceProduct.kg_per_bag || 45))} กระสอบ
+                  </span>
+                </div>
+                <div>
+                  <span className="text-stone-400 block text-[9px]">ถังพร้อมขาย (15kg)</span>
+                  <span className="font-bold text-stone-700">
+                    {Math.floor(selectedRiceProduct.stock_qty / 15)} ถัง
+                  </span>
+                </div>
+                <div>
+                  <span className="text-stone-400 block text-[9px]">กก. คงเหลือรวม</span>
+                  <span className="font-bold text-emerald-700">
+                    {selectedRiceProduct.stock_qty.toLocaleString()} กก.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 1: Select Unit */}
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                1. เลือกหน่วยขาย
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['กิโล', 'ถัง', 'กระสอบ'] as const).map((unit) => {
+                  const isAvailable = unit === 'กิโล' 
+                    ? selectedRiceProduct.stock_qty >= 1
+                    : unit === 'ถัง'
+                    ? selectedRiceProduct.stock_qty >= 15
+                    : selectedRiceProduct.stock_qty >= (selectedRiceProduct.kg_per_bag || 45);
+
+                  return (
+                    <button
+                      key={unit}
+                      type="button"
+                      disabled={!isAvailable}
+                      onClick={() => setSelectedRiceUnit(unit)}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center cursor-pointer ${
+                        selectedRiceUnit === unit
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-600/20'
+                          : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                      } ${!isAvailable ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    >
+                      <span>{unit === 'กิโล' ? '1 กิโลกรัม' : unit === 'ถัง' ? '1 ถัง (15 กก.)' : '1 กระสอบ'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 2: Select Price Tier */}
+            <div className="mb-5">
+              <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">
+                2. เลือกประเภทราคาขาย
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['shop', 'retail', 'wholesale'] as const).map((tier) => {
+                  const price = getProductPriceByUnitAndTier(selectedRiceProduct, selectedRiceUnit, tier);
+                  return (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => setSelectedRiceTier(tier)}
+                      className={`py-2 px-1 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center cursor-pointer ${
+                        selectedRiceTier === tier
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-600/20'
+                          : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                      }`}
+                    >
+                      <span className="text-[10px] text-stone-400">
+                        {tier === 'shop' ? 'หน้าร้าน' : tier === 'retail' ? 'ราคาปลีก' : 'ราคาส่ง'}
+                      </span>
+                      <span className="text-sm font-black mt-0.5">{price} ฿</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Result summary and add to cart */}
+            <div className="pt-4 border-t border-stone-200 flex items-center justify-between gap-3">
+              <div className="text-left">
+                <span className="text-[10px] text-stone-400 block font-bold uppercase">ราคาต่อหน่วย</span>
+                <span className="text-lg font-black text-stone-900">
+                  {getProductPriceByUnitAndTier(selectedRiceProduct, selectedRiceUnit, selectedRiceTier)} ฿
+                </span>
+                <span className="text-[9px] text-stone-500 block">
+                  / {selectedRiceUnit === 'กิโล' ? 'กิโลกรัม' : selectedRiceUnit === 'ถัง' ? 'ถัง (15 กิโล)' : 'กระสอบ'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  addToCart(selectedRiceProduct, selectedRiceUnit, selectedRiceTier);
+                  setShowRiceModal(false);
+                }}
+                className="py-2.5 px-6 bg-brand-green hover:bg-brand-green-hover text-white rounded-xl text-xs font-bold cursor-pointer shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                <span>เพิ่มลงตะกร้า</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bill Receipt Modal (ใบเสร็จรับเงิน) */}
       {showReceiptModal && lastSavedInvoice && (

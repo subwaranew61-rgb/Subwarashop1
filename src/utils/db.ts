@@ -43,7 +43,16 @@ const DEFAULT_PRODUCTS: Product[] = [
     stock_qty: 900, // 900 กิโล = 20 กระสอบ
     min_qty: 180, // ขั้นต่ำ 4 กระสอบ
     is_rice: true,
-    kg_per_bag: 45
+    kg_per_bag: 45,
+    price_retail_kg: 38,
+    price_wholesale_kg: 33,
+    price_shop_kg: 35,
+    price_retail_thang: 540,
+    price_wholesale_thang: 480,
+    price_shop_thang: 500,
+    price_retail_bag: 1500,
+    price_wholesale_bag: 1380,
+    price_shop_bag: 1450
   },
   {
     id: 'P002',
@@ -55,7 +64,16 @@ const DEFAULT_PRODUCTS: Product[] = [
     stock_qty: 1000, // 1000 กิโล = 20 กระสอบ
     min_qty: 200, // ขั้นต่ำ 4 กระสอบ
     is_rice: true,
-    kg_per_bag: 50
+    kg_per_bag: 50,
+    price_retail_kg: 32,
+    price_wholesale_kg: 27,
+    price_shop_kg: 29,
+    price_retail_thang: 450,
+    price_wholesale_thang: 390,
+    price_shop_thang: 420,
+    price_retail_bag: 1300,
+    price_wholesale_bag: 1200,
+    price_shop_bag: 1250
   },
   {
     id: 'P003',
@@ -67,7 +85,16 @@ const DEFAULT_PRODUCTS: Product[] = [
     stock_qty: 450, // 450 กิโล = 10 กระสอบ
     min_qty: 135,
     is_rice: true,
-    kg_per_bag: 45
+    kg_per_bag: 45,
+    price_retail_kg: 28,
+    price_wholesale_kg: 23,
+    price_shop_kg: 25,
+    price_retail_thang: 380,
+    price_wholesale_thang: 330,
+    price_shop_thang: 350,
+    price_retail_bag: 1100,
+    price_wholesale_bag: 1000,
+    price_shop_bag: 1050
   },
   {
     id: 'P004',
@@ -522,8 +549,12 @@ export const dbService = {
           const { data: p } = await supabase.from('products').select('stock_qty, is_rice, kg_per_bag').eq('id', item.product_id).single();
           if (p) {
             let deductQty = item.qty;
-            if (p.is_rice && item.unit === 'กระสอบ') {
-              deductQty = item.qty * (p.kg_per_bag || 45);
+            if (p.is_rice) {
+              if (item.unit.includes('กระสอบ')) {
+                deductQty = item.qty * (p.kg_per_bag || 45);
+              } else if (item.unit.includes('ถัง')) {
+                deductQty = item.qty * 15;
+              }
             }
             await supabase.from('products').update({ stock_qty: p.stock_qty - deductQty }).eq('id', item.product_id);
           }
@@ -545,8 +576,12 @@ export const dbService = {
       if (pIndex > -1) {
         const product = products[pIndex];
         let deductWeight = item.qty;
-        if (product.is_rice && item.unit === 'กระสอบ') {
-          deductWeight = item.qty * (product.kg_per_bag || 45);
+        if (product.is_rice) {
+          if (item.unit.includes('กระสอบ')) {
+            deductWeight = item.qty * (product.kg_per_bag || 45);
+          } else if (item.unit.includes('ถัง')) {
+            deductWeight = item.qty * 15;
+          }
         }
         products[pIndex].stock_qty = Math.max(0, product.stock_qty - deductWeight);
       }

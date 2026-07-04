@@ -11,6 +11,21 @@ export interface Product {
   is_rice: boolean;
   kg_per_bag?: number; // E.g., 45 for Jasmine, 50 for Sticky Rice
   created_at?: string;
+
+  // Selling prices per Kilogram (ราคาขาย ต่อกิโลกรัม)
+  price_retail_kg?: number;
+  price_wholesale_kg?: number;
+  price_shop_kg?: number;
+
+  // Selling prices per Thang (ราคาขาย ต่อถัง - 15 กิโลกรัม)
+  price_retail_thang?: number;
+  price_wholesale_thang?: number;
+  price_shop_thang?: number;
+
+  // Selling prices per Bag (ราคาขาย ต่อกระสอบ)
+  price_retail_bag?: number;
+  price_wholesale_bag?: number;
+  price_shop_bag?: number;
 }
 
 export interface Unit {
