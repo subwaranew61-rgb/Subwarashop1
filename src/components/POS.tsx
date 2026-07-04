@@ -106,21 +106,24 @@ export default function POS({ currentUser }: POSProps) {
     if (!product.is_rice) return product.selling_price;
     
     if (unit === 'กิโล') {
-      if (tier === 'retail') return product.price_retail_kg || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 1.15);
-      if (tier === 'wholesale') return product.price_wholesale_kg || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 0.95);
-      return product.price_shop_kg || Math.round(product.selling_price / (product.kg_per_bag || 45)); // shop / storefront
+      const shopPrice = product.price_shop_kg || 0;
+      if (tier === 'retail') return product.price_retail_kg || shopPrice;
+      if (tier === 'wholesale') return product.price_wholesale_kg || shopPrice;
+      return shopPrice;
     }
     
     if (unit === 'ถัง') {
-      if (tier === 'retail') return product.price_retail_thang || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 15 * 1.1);
-      if (tier === 'wholesale') return product.price_wholesale_thang || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 15 * 0.95);
-      return product.price_shop_thang || Math.round((product.selling_price / (product.kg_per_bag || 45)) * 15); // shop / storefront
+      const shopPrice = product.price_shop_thang || 0;
+      if (tier === 'retail') return product.price_retail_thang || shopPrice;
+      if (tier === 'wholesale') return product.price_wholesale_thang || shopPrice;
+      return shopPrice;
     }
     
     // กระสอบ
-    if (tier === 'retail') return product.price_retail_bag || Math.round(product.selling_price * 1.05);
-    if (tier === 'wholesale') return product.price_wholesale_bag || Math.round(product.selling_price * 0.95);
-    return product.price_shop_bag || product.selling_price; // shop / storefront
+    const shopPrice = product.price_shop_bag || product.selling_price || 0;
+    if (tier === 'retail') return product.price_retail_bag || shopPrice;
+    if (tier === 'wholesale') return product.price_wholesale_bag || shopPrice;
+    return shopPrice;
   };
 
   // Calculate loose rice price and remaining details
@@ -131,7 +134,7 @@ export default function POS({ currentUser }: POSProps) {
     const thangs = Math.floor(product.stock_qty / 15);
     
     // Default storefront prices as a guide
-    const pricePerKg = product.price_shop_kg || Math.round((product.selling_price / product.kg_per_bag) * 1.15);
+    const pricePerKg = product.price_shop_kg || 0;
     const costPerKg = Math.round(product.cost_price / product.kg_per_bag);
     
     return { bags, loose, thangs, pricePerKg, costPerKg };

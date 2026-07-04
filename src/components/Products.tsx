@@ -579,7 +579,7 @@ export default function Products({ currentUser }: ProductsProps) {
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className={prodIsRice ? 'col-span-2' : ''}>
                   <label className="text-[10px] font-bold text-stone-500 uppercase block mb-1">
                     {prodIsRice ? 'ราคาทุนต่อกระสอบ (฿) *' : 'ราคาทุนต่อหน่วยหลัก (฿) *'}
                   </label>
@@ -589,30 +589,32 @@ export default function Products({ currentUser }: ProductsProps) {
                     required
                     value={prodCost}
                     onChange={(e) => setProdCost(Math.max(0, Number(e.target.value)))}
-                    className="block w-full rounded-xl border border-stone-300 py-1.5 px-3 text-xs text-stone-950 focus:outline-none"
+                    className="block w-full rounded-xl border border-stone-300 py-1.5 px-3 text-xs text-stone-950 focus:outline-none font-bold"
                   />
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-1">
-                    {prodIsRice ? 'ราคาขายต่อกระสอบ (฿) *' : 'ราคาขายต่อหน่วยหลัก (฿) *'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={prodSell}
-                    onChange={(e) => setProdSell(Math.max(0, Number(e.target.value)))}
-                    className="block w-full rounded-xl border border-stone-300 py-1.5 px-3 text-xs text-stone-950 focus:outline-none"
-                  />
-                </div>
+                {!prodIsRice && (
+                  <div>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase block mb-1">
+                      ราคาขายต่อหน่วยหลัก (฿) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={prodSell}
+                      onChange={(e) => setProdSell(Math.max(0, Number(e.target.value)))}
+                      className="block w-full rounded-xl border border-stone-300 py-1.5 px-3 text-xs text-stone-950 focus:outline-none"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Rice multi-unit multi-tier pricing table */}
               {prodIsRice && (
                 <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-3">
                   <span className="text-[11px] font-extrabold text-emerald-800 block border-b border-stone-200 pb-1.5 flex items-center gap-1.5">
-                    <Tags className="h-4 w-4 text-emerald-600 shrink-0" /> ตารางราคาขายตามหน่วย (ปลีก / ส่ง / หน้าร้าน)
+                    <Tags className="h-4 w-4 text-emerald-600 shrink-0" /> กำหนดตารางราคาขายตามหน่วย (ปลีก / ส่ง / หน้าร้าน)
                   </span>
 
                   <div className="space-y-3">
@@ -620,34 +622,37 @@ export default function Products({ currentUser }: ProductsProps) {
                     <div className="space-y-1">
                       <span className="text-[10px] font-black text-stone-700 block">🛍️ ราคาต่อกิโลกรัม (KG)</span>
                       <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาปลีก (฿)</label>
+                        <div className="bg-indigo-50/40 p-1.5 rounded-lg border border-indigo-100">
+                          <label className="text-[9px] font-black text-indigo-700 block mb-0.5">ราคาขายหน้าร้าน (฿) *</label>
                           <input
                             type="number"
                             min="0"
-                            value={priceRetailKg}
-                            onChange={(e) => setPriceRetailKg(Math.max(0, Number(e.target.value)))}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาหน้าร้าน (฿)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={priceShopKg}
+                            value={priceShopKg || ''}
                             onChange={(e) => setPriceShopKg(Math.max(0, Number(e.target.value)))}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                            className="block w-full rounded-lg border border-indigo-200 py-1 px-2 text-xs focus:ring-1 focus:ring-indigo-500 outline-none text-indigo-950 font-bold bg-white"
+                            placeholder="ใส่ราคาหน้าร้าน"
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาส่ง (฿)</label>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-1">ราคาปลีก (฿)</label>
                           <input
                             type="number"
                             min="0"
-                            value={priceWholesaleKg}
+                            value={priceRetailKg || ''}
+                            onChange={(e) => setPriceRetailKg(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 bg-white"
+                            placeholder="เขียนราคาเอง"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-1">ราคาส่ง (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceWholesaleKg || ''}
                             onChange={(e) => setPriceWholesaleKg(Math.max(0, Number(e.target.value)))}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 bg-white"
+                            placeholder="เขียนราคาเอง"
                           />
                         </div>
                       </div>
@@ -657,34 +662,37 @@ export default function Products({ currentUser }: ProductsProps) {
                     <div className="space-y-1">
                       <span className="text-[10px] font-black text-stone-700 block">🧺 ราคาต่อถัง (ถังละ 15 กิโล)</span>
                       <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาปลีก (฿)</label>
+                        <div className="bg-indigo-50/40 p-1.5 rounded-lg border border-indigo-100">
+                          <label className="text-[9px] font-black text-indigo-700 block mb-0.5">ราคาขายหน้าร้าน (฿) *</label>
                           <input
                             type="number"
                             min="0"
-                            value={priceRetailThang}
-                            onChange={(e) => setPriceRetailThang(Math.max(0, Number(e.target.value)))}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาหน้าร้าน (฿)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={priceShopThang}
+                            value={priceShopThang || ''}
                             onChange={(e) => setPriceShopThang(Math.max(0, Number(e.target.value)))}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                            className="block w-full rounded-lg border border-indigo-200 py-1 px-2 text-xs focus:ring-1 focus:ring-indigo-500 outline-none text-indigo-950 font-bold bg-white"
+                            placeholder="ใส่ราคาหน้าร้าน"
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาส่ง (฿)</label>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-1">ราคาปลีก (฿)</label>
                           <input
                             type="number"
                             min="0"
-                            value={priceWholesaleThang}
+                            value={priceRetailThang || ''}
+                            onChange={(e) => setPriceRetailThang(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 bg-white"
+                            placeholder="เขียนราคาเอง"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-1">ราคาส่ง (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceWholesaleThang || ''}
                             onChange={(e) => setPriceWholesaleThang(Math.max(0, Number(e.target.value)))}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 bg-white"
+                            placeholder="เขียนราคาเอง"
                           />
                         </div>
                       </div>
@@ -694,40 +702,40 @@ export default function Products({ currentUser }: ProductsProps) {
                     <div className="space-y-1">
                       <span className="text-[10px] font-black text-stone-700 block">📦 ราคาต่อกระสอบ ({prodKgPerBag} กิโล)</span>
                       <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาปลีก (฿)</label>
+                        <div className="bg-indigo-50/40 p-1.5 rounded-lg border border-indigo-100">
+                          <label className="text-[9px] font-black text-indigo-700 block mb-0.5">ราคาขายหน้าร้าน (฿) *</label>
                           <input
                             type="number"
                             min="0"
-                            value={priceRetailBag}
-                            onChange={(e) => {
-                              setPriceRetailBag(Math.max(0, Number(e.target.value)));
-                              if (prodSell === 0) setProdSell(Math.max(0, Number(e.target.value)));
-                            }}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาหน้าร้าน (฿)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={priceShopBag}
+                            value={priceShopBag || ''}
                             onChange={(e) => {
                               setPriceShopBag(Math.max(0, Number(e.target.value)));
                               setProdSell(Math.max(0, Number(e.target.value)));
                             }}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                            className="block w-full rounded-lg border border-indigo-200 py-1 px-2 text-xs focus:ring-1 focus:ring-indigo-500 outline-none text-indigo-950 font-bold bg-white"
+                            placeholder="ใส่ราคาหน้าร้าน"
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-bold text-stone-500 block mb-0.5">ราคาส่ง (฿)</label>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-1">ราคาปลีก (฿)</label>
                           <input
                             type="number"
                             min="0"
-                            value={priceWholesaleBag}
+                            value={priceRetailBag || ''}
+                            onChange={(e) => setPriceRetailBag(Math.max(0, Number(e.target.value)))}
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 bg-white"
+                            placeholder="เขียนราคาเอง"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-stone-500 block mb-1">ราคาส่ง (฿)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={priceWholesaleBag || ''}
                             onChange={(e) => setPriceWholesaleBag(Math.max(0, Number(e.target.value)))}
-                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 font-bold bg-white"
+                            className="block w-full rounded-lg border border-stone-300 py-1 px-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none text-stone-950 bg-white"
+                            placeholder="เขียนราคาเอง"
                           />
                         </div>
                       </div>
